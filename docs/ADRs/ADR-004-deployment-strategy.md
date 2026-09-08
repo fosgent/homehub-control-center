@@ -1,18 +1,20 @@
 # ADR-004: Deployment strategy
 
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
-Blind source pulls and restarts are difficult to audit and recover.
+Blind source pulls and restarts are difficult to audit, verify, and recover.
 
 ## Decision
-Use a deployment state machine: resolve release, preflight, backup, lock, stage, validate, build/install, migrate when required, activate, health-check, then success or rollback.
+Use a durable deployment state machine: authorize -> preflight -> lock -> verified backup -> exact artifact -> verification -> stage -> compatibility/migration checks -> activate -> health check -> success or deterministic failure/rollback. Every deployment has an idempotency key and durable operation state. Rollback targets an explicit known-good artifact/version plus required state references.
+
+Required backup failure blocks destructive deployment unless a pre-approved non-destructive policy applies.
 
 ## Alternatives
 `git pull` plus restart; mutable in-place deployment without backup; manual SSH deployment.
 
 ## Consequences
-More state and storage are required, but deployments become observable, repeatable, and recoverable.
+More state, metadata, and tests are required, but deployment becomes observable and recoverable.
 
 ## Security implications
-Prefer immutable verified artifacts. Deployment input is typed and registry-scoped. No shell passthrough is permitted.
+Only immutable verified artifacts are eligible for production activation. No shell passthrough. Failure states must never be represented as success or hidden by automatic destructive retries.

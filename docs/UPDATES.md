@@ -1,23 +1,22 @@
 # Updates
 
-**Status: Planned**
+**Status: Accepted update-security contract**
 
 ## Control Center self-update
 ```text
-Check GitHub Releases -> compare versions -> obtain immutable artifact -> verify -> stage -> install -> health check -> recover/rollback if supported
+discover release -> resolve exact version -> acquire immutable artifact -> verify identity/integrity/signature -> stage -> compatibility check -> install -> health check -> recover/rollback
 ```
 
-Self-update must not blindly execute repository code. Release identity, version compatibility, integrity/signature policy, and recovery behavior must be defined before production use.
+Self-update never executes arbitrary repository content and never treats a mutable branch as a trusted artifact.
 
 ## Project update
-```text
-Control Center -> Deployment Engine -> backup -> acquire release -> validate -> deploy -> health check -> rollback on failure
-```
+Project updates use the Deployment state machine and produce deployment plus audit records.
 
-Project updates must be represented as deployment records and produce audit events.
+## Trust policy
+The repository owner/name and expected artifact family are pinned in configuration/registry. Production prefers signed artifacts with a pinned verification trust root and provenance. Where signing is not yet available, the MVP requires an exact SHA-256 digest recorded before activation. A mismatch, missing digest, invalid signature, unexpected repository, incompatible version, or expired artifact is a hard failure.
 
 ## Versioning
-Use explicit semantic/application versions where appropriate. Store both desired and installed versions. Compare normalized versions using a single library/rule set rather than ad-hoc string comparison.
+Desired and installed versions are stored separately and compared with one normalized versioning rule set. Artifact identity is never inferred from a human-readable version string alone.
 
-## Integrity
-Prefer signed or otherwise cryptographically verifiable release artifacts. Trust roots and verification failures must fail closed.
+## Recovery
+Before activation, the current known-good state and rollback material are recorded. Failed update verification does not touch the live version. Failed activation/health check enters deterministic failure/rollback state.

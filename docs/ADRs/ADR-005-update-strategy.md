@@ -1,18 +1,18 @@
 # ADR-005: Update strategy
 
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
-Control Center and managed projects need predictable version discovery and recovery.
+Control Center and managed projects need predictable version discovery, artifact integrity, and recovery.
 
 ## Decision
-Prefer GitHub Releases or immutable artifacts, verify identity/integrity, stage before activation, and use health checks with rollback for managed projects. Treat Control Center self-update as a separate lifecycle.
+Use exact immutable release/artifact references. Production prefers signed artifacts/provenance with pinned trust roots. MVP additionally supports exact SHA-256 digest verification where signing is unavailable. Repository identity is pinned. Verification failure, repository mismatch, incompatible artifact, or mutable branch reference fails closed.
 
 ## Alternatives
 Blind `git pull`; downloading mutable branches; manual updates only.
 
 ## Consequences
-Release publication becomes part of operational discipline. Verification and recovery must be implemented before production self-update.
+Release publication becomes part of operational discipline. Verification and recovery are required before production self-update.
 
 ## Security implications
-Trust roots and verification failures must fail closed. Unverified artifacts must never be activated.
+Unverified artifacts never activate. Known-good rollback material is preserved before activation.

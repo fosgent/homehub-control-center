@@ -1,26 +1,32 @@
 # Multi-Server
 
-**Status: Planned**
+**Status: Accepted identity and isolation contract**
 
-The architecture separates the Control Plane from Managed Servers from the beginning.
+The Control Plane and Managed Servers are separate security domains.
 
 ```text
 Control Plane
- ├── HomeHub A -> Agent
- ├── HomeHub B -> Agent
- └── Future VPS -> Agent
+ ├── Server A -> Agent identity A
+ ├── Server B -> Agent identity B
+ └── Future VPS -> Agent identity C
 ```
 
-Each server has a stable Server ID, display name, network/address metadata, Agent identity/status, Agent version, OS, capabilities, health, and last-seen timestamp.
+## Server identity
+Each server has a stable `server_id` plus a unique cryptographic Agent identity. Registration binds the identity to one authorized server record. Revocation invalidates the Agent identity and prevents new privileged operations.
+
+Server capabilities (Docker, Nginx, filesystem resource classes, backups, health checks) constrain what the Agent can execute. A capability is not user authorization.
 
 ## Registration
-Server registration must establish a unique cryptographic identity, bind the Agent to an authorized server record, and support revocation. Registration is not proof of operator authorization by itself.
-
-## Capabilities
-Agents advertise a bounded capability set such as Docker, Nginx, filesystem paths, backups, or health checks. The Control Plane must authorize against both requested operation and server capability.
+Only an admin can register or revoke a server. Enrollment is an explicit authenticated process and records identity fingerprint, server metadata, capabilities, version, and audit event. A server cannot self-authorize by presenting a network address or Tailscale identity.
 
 ## Communication
-Prefer private Tailscale connectivity and authenticated encrypted transport. Agent-to-control authentication and server identity must be explicit; the final protocol remains a proposed ADR decision.
+Phase 1 is single-node and uses local UDS. Remote Agent transport is deferred; the accepted future direction is mTLS over private Tailscale connectivity with certificate identity bound to `server_id`.
 
-## Failure
-A disconnected server is unavailable, not implicitly authorized. Last-seen state is clearly distinguished from current health. Commands are not queued indefinitely without expiration and idempotency rules.
+## Isolation
+Authorization is evaluated for the selected server and project. Credentials, project roots, operation state, and audit scope do not cross server boundaries implicitly. Compromise of Server A does not grant a principal or Agent permission on Server B.
+
+## Offline/stale state
+A disconnected server is unavailable, not implicitly authorized. Last-seen is distinct from current health. Privileged operations are not queued indefinitely. Any future queued operation must have an expiration, idempotency key, target server identity, and explicit revalidation before execution.
+
+## Revocation and compromise
+On suspected compromise, revoke the server identity, stop accepting privileged work, preserve audit/evidence, rotate affected credentials, and recover/reinstall the Agent from a trusted artifact. Re-enrollment creates a new cryptographic identity rather than silently restoring the revoked identity.
