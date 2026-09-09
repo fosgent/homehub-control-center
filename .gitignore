@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# Runtime / local data
+*.db
+*.sqlite3
+*.log
+.env
+.env.local
+
+# Tooling
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyre/
+.htmlcov/
+.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend (Windows client UI)
+frontend/dist/
+frontend/node_modules/
+
+# Rust / Tauri (Windows client native layer)
+src-tauri/target/
+src-tauri/gen/schemas/
+

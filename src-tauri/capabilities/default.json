@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the main application window. Grants only core permissions; custom commands are invoked by name.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}
