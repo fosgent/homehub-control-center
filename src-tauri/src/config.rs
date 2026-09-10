@@ -1,9 +1,10 @@
 /// Native-layer configuration boundary.
 ///
-/// The Control API base URL is centralized here (mirroring the frontend config)
-/// so connectivity is not scattered across the codebase. No credentials live in
-/// this module. The default points at the local development Control API and can
-/// be overridden via the `HOMEHUB_CONTROL_API_URL` environment variable.
+/// The default Control API base URL is centralized here (mirroring the frontend
+/// default) and is used to seed the default server entry in the server
+/// registry. No credentials live in this module. It can be overridden via the
+/// `HOMEHUB_CONTROL_API_URL` environment variable; a user-saved server
+/// configuration supersedes it.
 
 const DEFAULT_CONTROL_API_URL: &str = "http://127.0.0.1:8000";
 
@@ -14,11 +15,6 @@ pub fn control_api_url() -> String {
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| DEFAULT_CONTROL_API_URL.to_string())
-}
-
-/// Return the intact (non-secret) connectivity configuration for display.
-pub fn describe() -> String {
-    control_api_url()
 }
 
 #[cfg(test)]
@@ -33,10 +29,5 @@ mod tests {
         if std::env::var("HOMEHUB_CONTROL_API_URL").is_err() {
             assert_eq!(control_api_url(), "http://127.0.0.1:8000");
         }
-    }
-
-    #[test]
-    fn describe_matches_control_api_url() {
-        assert_eq!(describe(), control_api_url());
     }
 }

@@ -14,3 +14,4 @@ Current foundation ADRs:
 - ADR-007 Secrets management — Accepted for MVP
 - ADR-008 Multi-server architecture — Accepted
 - ADR-009 SQLite MVP persistence — Accepted
+- ADR-010 Windows client server registry and connection boundary — Accepted

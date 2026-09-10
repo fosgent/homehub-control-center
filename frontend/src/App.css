@@ -25,6 +25,88 @@ body {
   padding: 24px 20px 32px;
 }
 
+.notice {
+  background: rgba(79, 140, 255, 0.12);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.server-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.server {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.server-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 6px 0 2px;
+}
+
+.error-line {
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.server-form {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-row label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.form-row input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.form-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.form-error {
+  color: #ef4444;
+  font-size: 13px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
 .header {
   display: flex;
   align-items: baseline;
@@ -97,6 +179,12 @@ button {
 button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
 }
 
 .nav {

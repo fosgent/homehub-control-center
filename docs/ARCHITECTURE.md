@@ -1,24 +1,34 @@
 # Architecture
 
-**Status: Accepted foundation; implementation-level contract for Phase 1**
+**Status: Accepted foundation; implementation-level contract for Phase 1.
+The Windows client → Control API path is implemented (Phase 1 / Tasks 1–4); the Agent,
+adapters, and authentication remain planned.**
 
 ## Control-plane model
 
 ```text
 Web UI / Windows Client
         |
-        | HTTPS + application authentication
+        | HTTPS + application authentication (Web UI planned; Windows client: see note)
         v
 Control API / Control Plane
         |
-        | HTTP/JSON over Unix Domain Socket
+        | HTTP/JSON over Unix Domain Socket (planned)
         v
 HomeHub Agent
         |
-        | typed allowlisted adapters
+        | typed allowlisted adapters (planned)
         v
 Docker / Nginx / Filesystem / System
 ```
+
+> **Implemented today (Windows client only).** The Windows client calls the Control API
+> through typed allowlisted Tauri commands; native Rust performs `GET {base}/api/v1/health`
+> health probes (http/https only). Authentication is **not** implemented yet, so today's
+> probes are unauthenticated. Server configuration is persisted in a versioned JSON
+> registry (`%APPDATA%` app config dir, atomic writes) — no database in the client; see
+> ADR-010. Parts of the diagram below the API (Agent, adapters) and the Web UI are
+> planned, not built.
 
 The Control Plane is the policy authority. The Agent is the privileged execution boundary. Clients are never authorization boundaries and never receive privileged fallback paths.
 

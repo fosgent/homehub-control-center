@@ -2,83 +2,150 @@ import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 
 import {
-  checkApiHealth,
   checkForUpdates,
-  getApiUrl,
+  connectServer,
+  disconnectServer,
   getAppVersion,
+  listServers,
+  removeServer,
+  saveServer,
+  testConnection,
 } from "./commands";
+import type {
+  AppVersion,
+  ConnectionState,
+  ServerConfigInput,
+  ServerView,
+  UpdateCheckResult,
+} from "./commands";
+import { ServerForm } from "./components/ServerForm";
 import { StatusDot } from "./components/StatusDot";
-import type { AppVersion, ApiHealth, UpdateCheckResult } from "./commands";
 
-type Section = "settings" | "about";
+type Section = "servers" | "settings" | "about";
 
-const CONNECTION_TEXT: Record<ApiHealth["state"], string> = {
-  ok: "Connected",
-  degraded: "Connected",
-  unreachable: "Disconnected",
-  error: "Disconnected",
-};
-
-const CONNECTION_COLOR: Record<ApiHealth["state"], "green" | "red" | "amber"> = {
-  ok: "green",
-  degraded: "amber",
-  unreachable: "red",
+const STATUS_DOT: Record<
+  ConnectionState,
+  "green" | "red" | "gray" | "amber"
+> = {
+  connected: "green",
+  connecting: "amber",
   error: "red",
+  disconnected: "gray",
+  disabled: "gray",
 };
 
-const HEALTH_TEXT: Record<ApiHealth["state"], string> = {
-  ok: "OK",
-  degraded: "Degraded",
-  unreachable: "Failed",
-  error: "Failed",
+const STATUS_TEXT: Record<ConnectionState, string> = {
+  connected: "Connected",
+  connecting: "Connecting…",
+  error: "Error",
+  disconnected: "Disconnected",
+  disabled: "Disabled",
 };
 
-const HEALTH_COLOR: Record<ApiHealth["state"], "green" | "red" | "amber"> = {
-  ok: "green",
-  degraded: "amber",
-  unreachable: "red",
-  error: "red",
-};
+function errorMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return "Unknown error.";
+}
 
 export default function App() {
   const [version, setVersion] = useState<AppVersion | null>(null);
-  const [apiUrl, setApiUrl] = useState<string>("");
-  const [health, setHealth] = useState<ApiHealth | null>(null);
-  const [checkingHealth, setCheckingHealth] = useState(false);
+  const [servers, setServers] = useState<ServerView[]>([]);
+  const [section, setSection] = useState<Section>("servers");
+  const [editing, setEditing] = useState<ServerView | "new" | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [formBusy, setFormBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [updateCheck, setUpdateCheck] = useState<UpdateCheckResult | null>(null);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
-  const [section, setSection] = useState<Section>("settings");
 
-  const refreshHealth = useCallback(async () => {
-    setCheckingHealth(true);
-    setHealth(null);
-    try {
-      setHealth(await checkApiHealth());
-    } catch {
-      setHealth({
-        state: "error",
-        connected: false,
-        status: "unknown",
-        database: "unknown",
-        version: "unknown",
-        apiUrl,
-        detail: "Failed to reach the native layer",
-      });
-    } finally {
-      setCheckingHealth(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const refresh = useCallback(async () => {
+    setServers(await listServers());
   }, []);
 
   useEffect(() => {
     getAppVersion()
       .then(setVersion)
       .catch(() => setVersion(null));
-    getApiUrl()
-      .then(setApiUrl)
-      .catch(() => setApiUrl("unknown"));
-    refreshHealth();
-  }, [refreshHealth]);
+    refresh().catch(() => setServers([]));
+  }, [refresh]);
+
+  const runAction = useCallback(
+    async (serverId: string, action: () => Promise<unknown>) => {
+      setBusyId(serverId);
+      setNotice(null);
+      try {
+        await action();
+      } catch (error) {
+        setNotice(errorMessage(error));
+      } finally {
+        setBusyId(null);
+        refresh().catch(() => setServers([]));
+      }
+    },
+    [refresh]
+  );
+
+  const handleConnect = useCallback(
+    (server: ServerView) => {
+      if (!server.enabled) {
+        setNotice(`Cannot connect: \`${server.name}\` is disabled.`);
+        return;
+      }
+      return runAction(server.serverId, () => connectServer(server.serverId));
+    },
+    [runAction]
+  );
+
+  const handleDisconnect = useCallback(
+    (server: ServerView) =>
+      runAction(server.serverId, () => disconnectServer(server.serverId)),
+    [runAction]
+  );
+
+  const handleTest = useCallback(
+    (server: ServerView) => {
+      if (!server.enabled) {
+        setNotice(`Cannot test connection: \`${server.name}\` is disabled.`);
+        return;
+      }
+      return runAction(server.serverId, () => testConnection(server.serverId));
+    },
+    [runAction]
+  );
+
+  const handleRemove = useCallback(
+    (server: ServerView) =>
+      runAction(server.serverId, () => removeServer(server.serverId)),
+    [runAction]
+  );
+
+  const handleSave = useCallback(
+    async (input: ServerConfigInput) => {
+      setFormBusy(true);
+      setFormError(null);
+      try {
+        await saveServer(input);
+        setEditing(null);
+        setNotice(
+          input.serverId
+            ? `Saved \`${input.name}\`.`
+            : `Added \`${input.name}\`.`
+        );
+        await refresh();
+      } catch (error) {
+        setFormError(errorMessage(error));
+      } finally {
+        setFormBusy(false);
+      }
+    },
+    [refresh]
+  );
 
   const handleCheckForUpdates = useCallback(async () => {
     setCheckingUpdates(true);
@@ -95,14 +162,6 @@ export default function App() {
     }
   }, []);
 
-  const connectionState: ApiHealth["state"] = health?.state ?? "error";
-  const isChecking = health === null && checkingHealth;
-
-  const connectColor = isChecking
-    ? "amber"
-    : CONNECTION_COLOR[connectionState];
-  const healthColor = isChecking ? "amber" : HEALTH_COLOR[connectionState];
-
   return (
     <div className="app">
       <header className="header">
@@ -110,45 +169,13 @@ export default function App() {
         <div className="version">Version: {version?.version ?? "…"}</div>
       </header>
 
-      <section className="card">
-        <h2 className="card-title">Control API</h2>
-        <div className="status-line">
-          <StatusDot color={connectColor}>
-            {isChecking
-              ? "Checking…"
-              : CONNECTION_TEXT[connectionState]}
-          </StatusDot>
-          <span className="endpoint">{apiUrl || "…"}</span>
-        </div>
-
-        <h2 className="card-title">Health</h2>
-        <div className="status-line">
-          <StatusDot color={healthColor}>
-            {isChecking ? "Checking…" : HEALTH_TEXT[connectionState]}
-          </StatusDot>
-        </div>
-        {health && health.status !== "unknown" ? (
-          <div className="detail">
-            status={health.status} · database={health.database} · api=v
-            {health.version}
-          </div>
-        ) : null}
-        {health && health.detail ? (
-          <div className="detail">{health.detail}</div>
-        ) : null}
-
-        <div className="actions">
-          <button onClick={refreshHealth} disabled={checkingHealth}>
-            {checkingHealth ? "Checking…" : "Check health"}
-          </button>
-          <button onClick={handleCheckForUpdates} disabled={checkingUpdates}>
-            {checkingUpdates ? "Checking…" : "Check for updates"}
-          </button>
-        </div>
-        {updateCheck ? <div className="detail">{updateCheck.message}</div> : null}
-      </section>
-
       <nav className="nav">
+        <button
+          className={section === "servers" ? "nav-active" : ""}
+          onClick={() => setSection("servers")}
+        >
+          Servers
+        </button>
         <button
           className={section === "settings" ? "nav-active" : ""}
           onClick={() => setSection("settings")}
@@ -163,31 +190,173 @@ export default function App() {
         </button>
       </nav>
 
-      <section className="card">
-        {section === "settings" ? (
-          <div>
-            <h2 className="card-title">Settings</h2>
-            <p className="muted">
-              Control API endpoint: <code>{apiUrl || "…"}</code>
-            </p>
-            <p className="muted">
-              Connectivity is configured centrally; no credentials are stored
-              here.
-            </p>
+      {notice ? (
+        <div className="notice" role="alert">
+          {notice}
+        </div>
+      ) : null}
+
+      {section === "servers" ? (
+        <section className="card">
+          <h2 className="card-title">Servers</h2>
+          {servers.length === 0 ? (
+            <p className="muted">No servers configured yet.</p>
+          ) : (
+            <div className="server-list">
+              {servers.map((server) => (
+                <ServerRow
+                  key={server.serverId}
+                  server={server}
+                  busy={busyId === server.serverId}
+                  onConnect={() => handleConnect(server)}
+                  onDisconnect={() => handleDisconnect(server)}
+                  onTest={() => handleTest(server)}
+                  onEdit={() => {
+                    setFormError(null);
+                    setEditing(server);
+                  }}
+                  onRemove={() => handleRemove(server)}
+                />
+              ))}
+            </div>
+          )}
+
+          {editing === null ? (
+            <div className="actions">
+              <button
+                onClick={() => {
+                  setFormError(null);
+                  setEditing("new");
+                }}
+              >
+                Add Server
+              </button>
+            </div>
+          ) : (
+            <ServerForm
+              initial={editing === "new" ? null : editing}
+              busy={formBusy}
+              error={formError}
+              onCancel={() => setEditing(null)}
+              onSubmit={handleSave}
+            />
+          )}
+        </section>
+      ) : null}
+
+      {section === "settings" ? (
+        <section className="card">
+          <h2 className="card-title">Settings</h2>
+          <p className="muted">
+            Server endpoint configuration lives under <strong>Servers</strong>.
+            Each server stores its Control API URL only — no passwords, API
+            keys, or tokens are kept by the client.
+          </p>
+          <div className="actions">
+            <button
+              onClick={handleCheckForUpdates}
+              disabled={checkingUpdates}
+            >
+              {checkingUpdates ? "Checking…" : "Check for updates"}
+            </button>
           </div>
+          {updateCheck ? (
+            <div className="detail">{updateCheck.message}</div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {section === "about" ? (
+        <section className="card">
+          <h2 className="card-title">About</h2>
+          <p className="muted">HomeHub Control Center</p>
+          <p className="muted">
+            Version <code>{version?.version ?? "…"}</code>
+          </p>
+          <p className="muted">
+            Identifier <code>{version?.identifier ?? "…"}</code>
+          </p>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+interface ServerRowProps {
+  server: ServerView;
+  busy: boolean;
+  onConnect: () => void;
+  onDisconnect: () => void;
+  onTest: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}
+
+function ServerRow({
+  server,
+  busy,
+  onConnect,
+  onDisconnect,
+  onTest,
+  onEdit,
+  onRemove,
+}: ServerRowProps) {
+  const degraded = server.enabled && server.degraded;
+  const dotColor: "green" | "red" | "gray" | "amber" = degraded
+    ? "amber"
+    : STATUS_DOT[server.status];
+  const statusText = degraded
+    ? "Connected (degraded)"
+    : STATUS_TEXT[server.status];
+
+  return (
+    <div className="server">
+      <div className="status-line">
+        <StatusDot color={dotColor}>{statusText}</StatusDot>
+        {server.enabled ? null : <span className="muted">(disabled)</span>}
+      </div>
+      <div className="server-name">{server.name}</div>
+      <div className="endpoint">{server.url}</div>
+      {server.error ? (
+        <div className="error-line" role="alert">
+          {server.error}
+        </div>
+      ) : null}
+      {server.lastCheck ? (
+        <div className="detail">
+          {server.lastCheck.message}
+          {server.lastCheck.version !== "unknown"
+            ? ` (API v${server.lastCheck.version})`
+            : ""}
+        </div>
+      ) : null}
+      <div className="actions">
+        {server.status === "connected" ? (
+          <button onClick={onDisconnect} disabled={busy}>
+            Disconnect
+          </button>
         ) : (
-          <div>
-            <h2 className="card-title">About</h2>
-            <p className="muted">HomeHub Control Center</p>
-            <p className="muted">
-              Version <code>{version?.version ?? "…"}</code>
-            </p>
-            <p className="muted">
-              Identifier <code>{version?.identifier ?? "…"}</code>
-            </p>
-          </div>
+          <button
+            onClick={onConnect}
+            disabled={busy || !server.enabled}
+          >
+            Connect
+          </button>
         )}
-      </section>
+        <button
+          className="btn-secondary"
+          onClick={onTest}
+          disabled={busy || !server.enabled}
+        >
+          Test Connection
+        </button>
+        <button className="btn-secondary" onClick={onEdit} disabled={busy}>
+          Edit
+        </button>
+        <button className="btn-secondary" onClick={onRemove} disabled={busy}>
+          Remove
+        </button>
+      </div>
     </div>
   );
 }

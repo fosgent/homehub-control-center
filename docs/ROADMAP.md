@@ -1,39 +1,70 @@
 # Roadmap
 
-**Status: Accepted implementation sequence**
+**Status: living document.** Work is tracked as numbered tasks under phases. This
+document distinguishes **completed** work from **next proposed** work and **future
+capabilities**. Nothing under "Next proposed work" or "Future capabilities" has been
+started; a task must be explicitly selected and approved before implementation.
 
-## Phase 0 — Foundation
-Product, architecture, security model, API contract, Agent model, registry, deployment/update model, scheduler, logging, secrets, multi-server model, ADRs, development/testing standards.
+## Completed
 
-## Phase 1 — API + Agent Foundation
-Authentication, authorization, SQLite/Alembic persistence, Control API skeleton, local Agent identity/channel, typed operation catalog, operation state/idempotency, health, audit foundation. **Gate: READY only after the Architecture Review v3 checklist is fully accepted.**
+| Task | Scope |
+|---|---|
+| Phase 1 / Task 1 | **Control API Foundation** — FastAPI API, layered domain/application/infrastructure, `GET /api/v1/health`, SQLite MVP persistence boundary (ADR-009), Alembic baseline, backend tooling (pytest/ruff/mypy). |
+| Phase 1 / Task 2 | **Windows Client MVP** — Tauri 2 + Rust native layer, React + TypeScript frontend, typed allowlisted commands, NSIS installer. |
+| Phase 1 / Task 3 | **Repository Integration / CI / Release** — GitHub Actions Windows build + verification, tag-based release workflow, v0.1.0 published. |
+| Phase 1 / Task 4 | **Server Connection Foundation** — server registry (versioned JSON, atomic writes), add/edit/remove, test/connect/disconnect, status display, connection semantics, native URL validation and security boundary, GUI-verified (ADR-010). |
 
-## Phase 2 — Windows Client Foundation
-Tauri validation, client shell, secure authentication, Windows Credential Manager integration, API client, connectivity and server status.
+Implementation details and preserved semantics: `README.md`,
+`docs/DEVELOPMENT_HANDOFF.md`, `docs/ADRs/ADR-010-windows-client-server-registry-and-connection-boundary.md`.
 
-## Phase 3 — Dashboard + Project Registry
-Dashboard metrics, registry persistence, project detail, server/project health, controlled lifecycle operations.
+## Next proposed work (not started)
 
-## Phase 4 — Service Management
-Docker/Nginx/system adapters, capability model, richer lifecycle, backup operations.
+**Phase 2 — Server Management Foundation**
 
-## Phase 5 — Logs + Monitoring
-Structured logs, health monitor, filtering/search, retention, security/audit views.
+Possible scope (keep open until a task is scoped):
 
-## Phase 6 — Deployment / Update Engine
-Release discovery, immutable artifacts, backup/staging, deployment state machine, health verification, rollback.
+- richer server metadata;
+- server capability discovery;
+- server details/status;
+- connection lifecycle (extend what Task 4 built);
+- foundation for authenticated server communication.
 
-## Phase 7 — Scheduler
-Durable jobs, locks, retries, history, run-now, health and maintenance tasks.
+**Infrastructure Integration (Coolify)**
 
-## Phase 8 — Secrets + Security + Audit
-Encrypted secrets, systemd credential bootstrap/recovery, RBAC hardening, rate limiting, threat-model-driven tests, audit integrity.
+Investigate and document how HomeHub Control Center should integrate with Coolify.
+Architectural principle already agreed: **Coolify may act as an infrastructure/deployment
+backend, while HomeHub Control Center remains the user's higher-level centralized
+management layer.** Do not implement integration yet unless explicitly assigned.
 
-## Phase 9 — Windows Self-Update
-Signed/verified client update flow, recovery, compatibility checks, release policy.
+## Future capabilities (not implemented, not scheduled)
 
-## Phase 10 — Multi-Server + Web UI + Polish
-Multiple managed servers, remote Agent registration/revocation, richer Web UI, operational polish, notifications as appropriate.
+- Project management / project registry.
+- Deployment visibility and actions.
+- Logs.
+- Backups and restore.
+- Scheduler (scheduled jobs).
+- Monitoring and health trends.
+- Secrets / credentials architecture.
+- Authentication and authorization / RBAC.
+- Audit trail.
+- Multi-server remote agents.
+- Web UI.
 
-## Gate
-Do not begin implementation of Phase 1 until all security-critical decisions in the Architecture Review v3 gate are accepted and testable.
+These correspond to the forward contracts in `docs/` (PRODUCT, SECURITY, AGENT, API,
+PROJECT-REGISTRY, DEPLOYMENT, UPDATES, SCHEDULER, LOGGING, SECRETS, MULTI-SERVER,
+OPERATIONS). They are **not** implemented; a future task must revisit and re-scope them
+against the current codebase before any claim of implementation.
+
+## Process gate
+
+Before starting any new task:
+
+1. Inspect current `git status` (uncommitted work belongs to the prior task).
+2. Read `docs/DEVELOPMENT_HANDOFF.md` and this roadmap.
+3. Read `docs/ARCHITECTURE.md` and relevant ADRs.
+4. Inspect existing tests before modifying behavior.
+5. Propose the task scope explicitly (including what is out of scope).
+6. Wait for approval before broad architectural changes.
+
+Authentication/RBAC (the original Phase 1 hardening items in ADR-006/007 and the API
+contract in `docs/API.md`) remain **future work** — authentication is not implemented.

@@ -1,10 +1,23 @@
 # API Contract
 
-**Status: Accepted architectural contract; endpoints are not implemented.**
+**Status: Accepted architectural contract. `GET /api/v1/health` (and `/`) are
+implemented (Phase 1 / Task 1); every other endpoint listed here is planned.**
 
 Base path: `/api/v1`.
 
-## Authentication and sessions
+## Implemented endpoints
+
+```text
+GET /            → {"name", "version"}
+GET /health      → {"status", "database", "version", "timestamp", "checks"}
+```
+
+`status` is domain-computed (`ok` or `degraded`; `degraded` when the database probe
+fails), `checks` lists component results (`[{"name":"database","status":"ok"|"failed"}]`).
+Health is a coarse, stable snapshot intended to be treated as durable truth rather than
+guessing from a transport-level response.
+
+## Authentication and sessions (planned)
 Web: server-side session with `Secure; HttpOnly; SameSite=Lax` cookie, 12-hour idle timeout, 7-day absolute timeout, CSRF token on state-changing requests, and explicit logout/revocation. Windows: 15-minute access credential plus rotating refresh credential stored in Windows Credential Manager. Refresh reuse revokes the refresh family. Password reset/admin recovery invalidates all active sessions and refresh families.
 
 Authentication library direction: FastAPI Users 15.x for user lifecycle and password-reset flows, SQLAlchemy persistence, and `pwdlib` recommended Argon2 password hashing. Current FastAPI Users documentation documents cookie/bearer transports and database-backed invalidatable tokens.
@@ -12,7 +25,8 @@ Authentication library direction: FastAPI Users 15.x for user lifecycle and pass
 ## Authorization
 Every protected endpoint performs server-side RBAC and resource-scope evaluation. Roles are `admin`, `operator`, `viewer`; operation rules are defined in `SECURITY.md`. Client-provided role/scope fields are never authoritative. The UI only hides or disables controls.
 
-## Endpoints
+## Endpoints (planned)
+Of the list below, only `GET /health` (and `GET /`) are implemented today; all others are planned.
 ```text
 GET  /health
 GET  /me
